@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -20,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -88,5 +90,48 @@ private fun BoxScope.CollapsedHeaderComposable(
             )
             Text("last seen recently", color = Color.White, fontSize = 12.sp)
         }
+    }
+}
+
+@Composable
+private fun BoxScope.ExpandedHeaderComposable(
+    headerHeight: Dp,
+    backButtonSize: Dp,
+    backButtonPadding: Dp,
+) {
+    Image(
+        painter = painterResource(R.drawable.profile),
+        null,
+        modifier = Modifier
+            .fillMaxSize(),
+        contentScale = ContentScale.Crop,
+    )
+    IconButton(
+        modifier = Modifier
+            .padding(backButtonPadding)
+            .size(backButtonSize),
+        onClick = {},
+        content = {
+            Icon(
+                Icons.AutoMirrored.Default.ArrowBack,
+                null,
+                tint = Color.White,
+            )
+        })
+
+    Column(
+        modifier = Modifier
+            .offset(
+                y = headerHeight - 70.dp
+            )
+            .padding(16.dp)
+    ) {
+        Text(
+            "Mostafa",
+            color = Color.White,
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+        )
+        Text("last seen recently", color = Color.White, fontSize = 12.sp)
     }
 }
