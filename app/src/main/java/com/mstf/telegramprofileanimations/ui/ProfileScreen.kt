@@ -79,7 +79,11 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
 
                 return Offset(
                     x = 0f,
-                    y = if (currentHeaderHeight == previewHeaderHeight) 0f else available.y,
+                    y = when {
+                        currentHeaderHeight == minHeaderHeight && delta < 0 -> 0f
+                        currentHeaderHeight == maxHeaderHeight && delta > 0 -> 0f
+                        else -> available.y
+                    },
                 )
             }
         }
