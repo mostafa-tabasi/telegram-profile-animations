@@ -31,6 +31,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -57,11 +58,7 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
     val minHeaderHeight = remember { 60.dp }
     val maxHeaderHeight = remember { 240.dp }
     var currentHeaderHeight by remember { mutableStateOf(minHeaderHeight) }
-    var headerHeightDelta by remember { mutableStateOf(0f) }
-
-    val minAvatarSize = remember { 50.dp }
-    val maxAvatarSize = remember { 100.dp }
-    var currentAvatarSize by remember { mutableStateOf(minAvatarSize) }
+    var headerHeightDelta by remember { mutableFloatStateOf(0f) }
 
     var isHeaderExpanded by remember { mutableStateOf(false) }
 
@@ -124,7 +121,6 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
                         backButtonSize,
                         headerHeightDelta,
                         minHeaderHeight,
-                        currentAvatarSize,
                         animatedVisibilityScope = this@AnimatedContent,
                         sharedTransitionScope = this@SharedTransitionLayout,
                     )
@@ -152,7 +148,6 @@ private fun BoxScope.CollapsedHeaderComposable(
     backButtonSize: Dp,
     headerHeightDelta: Float,
     minHeaderHeight: Dp,
-    currentAvatarSize: Dp,
     animatedVisibilityScope: AnimatedContentScope,
     sharedTransitionScope: SharedTransitionScope,
 ) {
@@ -184,7 +179,7 @@ private fun BoxScope.CollapsedHeaderComposable(
                 painter = painterResource(R.drawable.profile),
                 null,
                 modifier = Modifier
-                    .size(currentAvatarSize)
+                    .size(50.dp)
                     .clip(shape = CircleShape)
                     .sharedBounds(
                         rememberSharedContentState(key = ProfileSharedElementType.Image),
