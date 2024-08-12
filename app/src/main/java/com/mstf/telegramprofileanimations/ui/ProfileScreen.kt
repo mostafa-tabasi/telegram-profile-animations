@@ -1,5 +1,13 @@
+@file:OptIn(ExperimentalSharedTransitionApi::class)
+
 package com.mstf.telegramprofileanimations.ui
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedContentScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -71,7 +79,6 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
                 val newHeaderHeight = currentHeaderHeight + delta.dp.div(
                     if (!isHeaderExpanded) 5 else 15
                 )
-                val previewHeaderHeight = currentHeaderHeight
                 currentHeaderHeight = newHeaderHeight.coerceIn(minHeaderHeight, maxHeaderHeight)
                 headerHeightDelta =
                     (currentHeaderHeight - minHeaderHeight) / (maxHeaderHeight - minHeaderHeight)
@@ -100,17 +107,29 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
                 .height(currentHeaderHeight)
                 .background(Color(0xFF2187B9)),
         ) {
-            if (!isHeaderExpanded) CollapsedHeaderComposable(
-                backButtonPadding,
-                backButtonSize,
-                headerHeightDelta,
-                minHeaderHeight,
-                currentAvatarSize
-            ) else ExpandedHeaderComposable(
-                currentHeaderHeight,
-                backButtonSize,
-                backButtonPadding
-            )
+            SharedTransitionLayout {
+                AnimatedContent(
+                    targetState = isHeaderExpanded,
+                    label = "header_transition",
+                ) {
+                    if (it) ExpandedHeaderComposable(
+                        currentHeaderHeight,
+                        backButtonSize,
+                        backButtonPadding,
+                        animatedVisibilityScope = this@AnimatedContent,
+                        sharedTransitionScope = this@SharedTransitionLayout,
+                    )
+                    else CollapsedHeaderComposable(
+                        backButtonPadding,
+                        backButtonSize,
+                        headerHeightDelta,
+                        minHeaderHeight,
+                        currentAvatarSize,
+                        animatedVisibilityScope = this@AnimatedContent,
+                        sharedTransitionScope = this@SharedTransitionLayout,
+                    )
+                }
+            }
         }
         LazyColumn(
             modifier = Modifier
@@ -133,59 +152,93 @@ private fun BoxScope.CollapsedHeaderComposable(
     backButtonSize: Dp,
     headerHeightDelta: Float,
     minHeaderHeight: Dp,
-    currentAvatarSize: Dp
+    currentAvatarSize: Dp,
+    animatedVisibilityScope: AnimatedContentScope,
+    sharedTransitionScope: SharedTransitionScope,
 ) {
-    IconButton(
-        modifier = Modifier
-            .padding(backButtonPadding)
-            .size(backButtonSize),
-        onClick = {},
-        content = {
-            Icon(
-                Icons.AutoMirrored.Default.ArrowBack,
-                null,
-                tint = Color.White,
-            )
-        })
-
-    Row(
-        modifier = Modifier
-            .offset(
-                x = lerp(
-                    start = backButtonSize + backButtonPadding.times(3),
-                    stop = backButtonPadding,
-                    fraction = headerHeightDelta
-                        .times(2)
-                        .coerceIn(0f, 1f),
-                ),
-                y = lerp(
-                    start = 0.dp,
-                    stop = backButtonSize + backButtonPadding.times(2),
-                    fraction = headerHeightDelta
-                        .times(2)
-                        .coerceIn(0f, 1f),
-                )
-            )
-            .padding(horizontal = backButtonPadding)
-            .height(minHeaderHeight),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Image(
-            painter = painterResource(R.drawable.profile),
-            null,
+    with(sharedTransitionScope) {
+        Row(
             modifier = Modifier
-                .size(currentAvatarSize)
-                .clip(shape = CircleShape)
-        )
-        Column {
-            Text(
-                "Mostafa",
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
+                .offset(
+                    x = lerp(
+                        start = backButtonSize + backButtonPadding.times(3),
+                        stop = backButtonPadding.times(2),
+                        fraction = headerHeightDelta
+                            .times(2)
+                            .coerceIn(0f, 1f),
+                    ),
+                    y = lerp(
+                        start = 0.dp,
+                        stop = backButtonSize + backButtonPadding.times(2),
+                        fraction = headerHeightDelta
+                            .times(2)
+                            .coerceIn(0f, 1f),
+                    )
+                )
+                .padding(horizontal = backButtonPadding)
+                .height(minHeaderHeight),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Image(
+                painter = painterResource(R.drawable.profile),
+                null,
+                modifier = Modifier
+                    .size(currentAvatarSize)
+                    .clip(shape = CircleShape)
+                    .sharedBounds(
+                        rememberSharedContentState(key = ProfileSharedElementType.Image),
+                        animatedVisibilityScope = animatedVisibilityScope,
+                        clipInOverlayDuringTransition = OverlayClip(CircleShape),
+                        resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
+                        boundsTransform = { _, _ ->
+                            spring(stiffness = 500f)
+                        },
+                    )
             )
-            Text("last seen recently", color = Color.White, fontSize = 12.sp)
+            Column {
+                Text(
+                    "Mostafa",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier
+                        .sharedBounds(
+                            rememberSharedContentState(key = ProfileSharedElementType.Name),
+                            animatedVisibilityScope = animatedVisibilityScope,
+                            resizeMode = SharedTransitionScope.ResizeMode.ScaleToBounds(),
+                        ),
+                )
+                Text(
+                    "last seen recently",
+                    color = Color.White,
+                    fontSize = 12.sp,
+                    modifier = Modifier
+                        .sharedBounds(
+                            rememberSharedContentState(key = ProfileSharedElementType.LastSeen),
+                            animatedVisibilityScope = animatedVisibilityScope,
+                            resizeMode = SharedTransitionScope.ResizeMode.ScaleToBounds(),
+                        ),
+                )
+            }
         }
+
+        IconButton(
+            modifier = Modifier
+                .padding(backButtonPadding)
+                .size(backButtonSize)
+                .sharedElement(
+                    rememberSharedContentState(key = ProfileSharedElementType.Back),
+                    animatedVisibilityScope = animatedVisibilityScope,
+                ),
+            onClick = {},
+            content = {
+                Icon(
+                    Icons.AutoMirrored.Default.ArrowBack,
+                    null,
+                    tint = Color.White,
+                )
+            }
+        )
     }
 }
 
@@ -194,40 +247,81 @@ private fun BoxScope.ExpandedHeaderComposable(
     headerHeight: Dp,
     backButtonSize: Dp,
     backButtonPadding: Dp,
+    animatedVisibilityScope: AnimatedContentScope,
+    sharedTransitionScope: SharedTransitionScope,
 ) {
-    Image(
-        painter = painterResource(R.drawable.profile),
-        null,
-        modifier = Modifier
-            .fillMaxSize(),
-        contentScale = ContentScale.Crop,
-    )
-    IconButton(
-        modifier = Modifier
-            .padding(backButtonPadding)
-            .size(backButtonSize),
-        onClick = {},
-        content = {
-            Icon(
-                Icons.AutoMirrored.Default.ArrowBack,
-                null,
-                tint = Color.White,
-            )
-        })
-
-    Column(
-        modifier = Modifier
-            .offset(
-                y = headerHeight - 70.dp
-            )
-            .padding(16.dp)
-    ) {
-        Text(
-            "Mostafa",
-            color = Color.White,
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
+    with(sharedTransitionScope) {
+        Image(
+            painter = painterResource(R.drawable.profile),
+            null,
+            modifier = Modifier
+                .fillMaxSize()
+                .sharedBounds(
+                    rememberSharedContentState(key = ProfileSharedElementType.Image),
+                    animatedVisibilityScope = animatedVisibilityScope,
+                    resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
+                    boundsTransform = { _, _ ->
+                        spring(stiffness = 500f)
+                    },
+                ),
+            contentScale = ContentScale.Crop,
         )
-        Text("last seen recently", color = Color.White, fontSize = 12.sp)
+
+        Column(
+            modifier = Modifier
+                .offset(
+                    y = headerHeight - 70.dp
+                )
+                .padding(16.dp)
+        ) {
+            Text(
+                "Mostafa",
+                color = Color.White,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .sharedBounds(
+                        rememberSharedContentState(key = ProfileSharedElementType.Name),
+                        animatedVisibilityScope = animatedVisibilityScope,
+                        resizeMode = SharedTransitionScope.ResizeMode.ScaleToBounds(),
+                    ),
+            )
+            Text(
+                "last seen recently",
+                color = Color.White,
+                fontSize = 12.sp,
+                modifier = Modifier
+                    .sharedBounds(
+                        rememberSharedContentState(key = ProfileSharedElementType.LastSeen),
+                        animatedVisibilityScope = animatedVisibilityScope,
+                        resizeMode = SharedTransitionScope.ResizeMode.ScaleToBounds(),
+                    ),
+            )
+        }
+
+        IconButton(
+            modifier = Modifier
+                .padding(backButtonPadding)
+                .size(backButtonSize)
+                .sharedElement(
+                    rememberSharedContentState(key = ProfileSharedElementType.Back),
+                    animatedVisibilityScope = animatedVisibilityScope,
+                ),
+            onClick = {},
+            content = {
+                Icon(
+                    Icons.AutoMirrored.Default.ArrowBack,
+                    null,
+                    tint = Color.White,
+                )
+            }
+        )
     }
+}
+
+enum class ProfileSharedElementType {
+    Image,
+    Name,
+    LastSeen,
+    Back,
 }
