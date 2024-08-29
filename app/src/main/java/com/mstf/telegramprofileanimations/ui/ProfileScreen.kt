@@ -22,8 +22,8 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
@@ -65,10 +65,6 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
     val backButtonSize = remember { 50.dp }
     val backButtonPadding = remember { 4.dp }
 
-    val items = remember {
-        (1..100).map { "Item #$it" }
-    }
-
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
@@ -96,13 +92,14 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .fillMaxSize()
+            .background(color = Color.LightGray.copy(alpha = 0.2f))
             .nestedScroll(nestedScrollConnection),
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(currentHeaderHeight)
-                .background(Color(0xFF2187B9)),
+                .background(Color.Gray),
         ) {
             SharedTransitionLayout {
                 AnimatedContent(
@@ -131,13 +128,18 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
             modifier = Modifier
                 .fillMaxWidth(),
         ) {
-            items(items) {
-                Text(
-                    it,
-                    modifier = Modifier
-                        .padding(horizontal = 8.dp, vertical = 12.dp)
-                )
-            }
+            items(
+                count = 20,
+                itemContent = {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(75.dp)
+                            .padding(8.dp)
+                            .background(Color.White, shape = RoundedCornerShape(8.dp)),
+                    )
+                }
+            )
         }
     }
 }
