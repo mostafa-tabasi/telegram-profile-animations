@@ -54,7 +54,7 @@ import androidx.compose.ui.unit.sp
 import com.mstf.telegramprofileanimations.R
 
 @Composable
-fun ProfileScreen(modifier: Modifier = Modifier) {
+fun ProfileScreenWithSharedTransition(modifier: Modifier = Modifier) {
     val minHeaderHeight = remember { 60.dp }
     val maxHeaderHeight = remember { 240.dp }
     var currentHeaderHeight by remember { mutableStateOf(minHeaderHeight) }
