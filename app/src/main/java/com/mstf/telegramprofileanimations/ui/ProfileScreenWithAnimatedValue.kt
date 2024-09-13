@@ -33,13 +33,14 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
     val density = LocalDensity.current
 
     val minHeaderHeight = 60.dp
-    val maxHeaderHeight = 240.dp
+    val maxHeaderHeight = minHeaderHeight.times(5)
     var headerHeight by remember { mutableStateOf(minHeaderHeight) }
     val animatedHeaderHeight by animateDpAsState(
         targetValue = headerHeight,
         label = "header_height",
     )
 
+    var isDragging by remember { mutableStateOf(false) }
     val lazyListState = rememberLazyListState()
 
     val nestedScrollConnection = remember {
@@ -47,6 +48,7 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 val delta = available.y
 
+                if (!isDragging) return Offset.Zero
                 if (headerHeight <= minHeaderHeight) return Offset.Zero
                 if (headerHeight >= maxHeaderHeight) return Offset.Zero
                 if (lazyListState.canScrollBackward && delta > 0) return Offset.Zero
@@ -66,10 +68,33 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                         val event = awaitPointerEvent()
                         when (event.type) {
                             PointerEventType.Press -> {
+                                isDragging = true
+
                                 println("PointerEventType.Press")
                             }
 
                             PointerEventType.Release -> {
+                                isDragging = false
+
+                                when {
+                                    headerHeight >= maxHeaderHeight
+                                        .div(5)
+                                        .times(2) &&
+                                            headerHeight < maxHeaderHeight
+                                        .div(5)
+                                        .times(3)
+                                    -> headerHeight = maxHeaderHeight
+                                        .div(5)
+                                        .times(2)
+
+                                    headerHeight >= maxHeaderHeight
+                                        .div(5)
+                                        .times(3)
+                                    -> headerHeight = maxHeaderHeight
+
+                                    else -> {}
+                                }
+
                                 println("PointerEventType.Release")
                             }
 
@@ -79,7 +104,18 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                                 val deltaInDp = with(density) { delta.toDp() }
 
                                 if (!lazyListState.canScrollBackward || delta < 0) {
-                                    headerHeight = (headerHeight + deltaInDp)
+                                    val elasticityLevel =
+                                        if (
+                                            headerHeight > maxHeaderHeight
+                                                .div(5)
+                                                .times(2) &&
+                                            headerHeight < maxHeaderHeight
+                                                .div(5)
+                                                .times(3)
+                                        ) 3
+                                        else 1
+
+                                    headerHeight = (headerHeight + deltaInDp.div(elasticityLevel))
                                         .coerceIn(minHeaderHeight, maxHeaderHeight)
                                 }
 
