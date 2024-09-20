@@ -65,6 +65,15 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
     )
     var headerHeightDelta by remember { mutableFloatStateOf(0f) }
 
+    var profileSize by remember { mutableStateOf(48.dp) }
+    val animatedProfileSize by animateDpAsState(
+        targetValue = profileSize,
+        label = "profile_height",
+    )
+
+    fun isHeaderInThirdPhase(): Boolean {
+        return headerHeight in maxHeaderHeight / 5 * 2..maxHeaderHeight / 5 * 3
+    }
 
     var isDragging by remember { mutableStateOf(false) }
     val lazyListState = rememberLazyListState()
@@ -111,9 +120,13 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                                             headerHeight < maxHeaderHeight
                                         .div(5)
                                         .times(3)
-                                    -> headerHeight = maxHeaderHeight
-                                        .div(5)
-                                        .times(2)
+                                    -> {
+                                        headerHeight = maxHeaderHeight
+                                            .div(5)
+                                            .times(2)
+
+                                        profileSize = 48.dp
+                                    }
 
                                     headerHeight >= maxHeaderHeight
                                         .div(5)
@@ -154,6 +167,8 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                                                 (maxHeaderHeight
                                                     .div(5)
                                                     .times(2) - minHeaderHeight)
+
+                                        if (isHeaderInThirdPhase()) profileSize += deltaInDp / 3
                                     }
                                 }
 
@@ -218,7 +233,7 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                     painter = painterResource(R.drawable.profile),
                     null,
                     modifier = Modifier
-                        .size(minHeaderHeight - 12.dp)
+                        .size(animatedProfileSize)
                         .clip(shape = CircleShape)
                 )
                 Column {
