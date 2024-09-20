@@ -1,6 +1,7 @@
 package com.mstf.telegramprofileanimations.ui
 
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -24,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -59,6 +61,7 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
     val animatedHeaderHeight by animateDpAsState(
         targetValue = headerHeight,
         label = "header_height",
+        animationSpec = tween(50)
     )
     var headerHeightDelta by remember { mutableFloatStateOf(0f) }
 
@@ -82,6 +85,7 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
         }
     }
 
+    var skipDragEventCounter by remember { mutableIntStateOf(0) }
     val dragDetectionModifier = remember {
         Modifier
             .nestedScroll(nestedScrollConnection)
@@ -97,6 +101,7 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                             }
 
                             PointerEventType.Release -> {
+                                skipDragEventCounter = 0
                                 isDragging = false
 
                                 when {
@@ -126,25 +131,30 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                                     event.changes[0].let { it.position.y - it.previousPosition.y }
                                 val deltaInDp = with(density) { delta.toDp() }
 
-                                if (!lazyListState.canScrollBackward || delta < 0) {
-                                    val elasticityLevel =
-                                        if (
-                                            headerHeight > maxHeaderHeight
-                                                .div(5)
-                                                .times(2) &&
-                                            headerHeight < maxHeaderHeight
-                                                .div(5)
-                                                .times(3)
-                                        ) 3
-                                        else 1
+                                if (skipDragEventCounter < 3) {
+                                    skipDragEventCounter++
+                                } else {
+                                    if (!lazyListState.canScrollBackward || delta < 0) {
+                                        val elasticityLevel =
+                                            if (
+                                                headerHeight > maxHeaderHeight
+                                                    .div(5)
+                                                    .times(2) &&
+                                                headerHeight < maxHeaderHeight
+                                                    .div(5)
+                                                    .times(3)
+                                            ) 3
+                                            else 1
 
-                                    headerHeight = (headerHeight + deltaInDp.div(elasticityLevel))
-                                        .coerceIn(minHeaderHeight, maxHeaderHeight)
+                                        headerHeight =
+                                            (headerHeight + deltaInDp.div(elasticityLevel))
+                                                .coerceIn(minHeaderHeight, maxHeaderHeight)
 
-                                    headerHeightDelta = (headerHeight - minHeaderHeight) /
-                                            (maxHeaderHeight
-                                                .div(5)
-                                                .times(2) - minHeaderHeight)
+                                        headerHeightDelta = (headerHeight - minHeaderHeight) /
+                                                (maxHeaderHeight
+                                                    .div(5)
+                                                    .times(2) - minHeaderHeight)
+                                    }
                                 }
 
                                 println("PointerEventType.Move, delta: $delta / deltaInDp: $deltaInDp")
@@ -162,7 +172,7 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(if (isDragging) headerHeight else animatedHeaderHeight)
+                .height(animatedHeaderHeight)
                 .background(Color.Gray),
         ) {
             IconButton(
