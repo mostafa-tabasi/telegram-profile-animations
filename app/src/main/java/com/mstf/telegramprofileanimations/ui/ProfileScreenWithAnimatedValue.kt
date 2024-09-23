@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -39,6 +40,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -64,15 +66,34 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
         animationSpec = tween(50)
     )
     var headerHeightDelta by remember { mutableFloatStateOf(0f) }
+    var headerContainerWidth by remember { mutableStateOf(0.dp) }
 
-    var profileSize by remember { mutableStateOf(48.dp) }
-    val animatedProfileSize by animateDpAsState(
-        targetValue = profileSize,
+    val minProfileSize = 48.dp
+    val maxProfileSize = minProfileSize.times(2)
+    var profileWidth by remember { mutableStateOf(minProfileSize) }
+    val animatedProfileWidth by animateDpAsState(
+        targetValue = profileWidth,
+        label = "profile_width",
+    )
+    var profileHeight by remember { mutableStateOf(minProfileSize) }
+    val animatedProfileHeight by animateDpAsState(
+        targetValue = profileHeight,
         label = "profile_height",
     )
 
-    fun isHeaderInThirdPhase(): Boolean {
-        return headerHeight in maxHeaderHeight / 5 * 2..maxHeaderHeight / 5 * 3
+    //                                        phase completion fraction
+    fun isHeaderInThirdPhase(): Pair<Boolean, Float> {
+        return Pair(
+            headerHeight in maxHeaderHeight / 5 * 2..maxHeaderHeight / 5 * 3,
+            (headerHeight - (maxHeaderHeight / 5 * 2)) / ((maxHeaderHeight / 5 * 3) - (maxHeaderHeight / 5 * 2))
+        )
+    }
+
+    fun isHeaderInFourthPhase(): Pair<Boolean, Float> {
+        return Pair(
+            headerHeight > maxHeaderHeight / 5 * 3,
+            ((headerHeight - maxHeaderHeight / 5 * 3) / (maxHeaderHeight - maxHeaderHeight / 5 * 3))
+        )
     }
 
     var isDragging by remember { mutableStateOf(false) }
@@ -88,7 +109,7 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                 if (headerHeight >= maxHeaderHeight) return Offset.Zero
                 if (lazyListState.canScrollBackward && delta > 0) return Offset.Zero
 
-                println("=== onPreScroll, deltaInDp: ${with(density) { delta.toDp() }} / canScrollForward: ${lazyListState.canScrollForward} / canScrollBackward: ${lazyListState.canScrollBackward}")
+                // println("=== onPreScroll, deltaInDp: ${with(density) { delta.toDp() }} / canScrollForward: ${lazyListState.canScrollForward} / canScrollBackward: ${lazyListState.canScrollBackward}")
                 return Offset(available.x, available.y)
             }
         }
@@ -106,7 +127,7 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                             PointerEventType.Press -> {
                                 isDragging = true
 
-                                println("PointerEventType.Press")
+                                // println("PointerEventType.Press")
                             }
 
                             PointerEventType.Release -> {
@@ -125,18 +146,24 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                                             .div(5)
                                             .times(2)
 
-                                        profileSize = 48.dp
+                                        profileWidth = minProfileSize
+                                        profileHeight = minProfileSize
                                     }
 
                                     headerHeight >= maxHeaderHeight
                                         .div(5)
                                         .times(3)
-                                    -> headerHeight = maxHeaderHeight
+                                    -> {
+                                        headerHeight = maxHeaderHeight
+
+                                        profileWidth = headerContainerWidth
+                                        profileHeight = headerHeight
+                                    }
 
                                     else -> {}
                                 }
 
-                                println("PointerEventType.Release")
+                                // println("PointerEventType.Release")
                             }
 
                             PointerEventType.Move -> {
@@ -168,11 +195,29 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                                                     .div(5)
                                                     .times(2) - minHeaderHeight)
 
-                                        if (isHeaderInThirdPhase()) profileSize += deltaInDp / 3
+                                        if (isHeaderInThirdPhase().first) {
+                                            val phaseFraction = isHeaderInThirdPhase().second
+                                            // println("In third phase, fraction: $phaseFraction")
+
+                                            profileWidth = lerp(
+                                                start = minProfileSize,
+                                                stop = maxProfileSize,
+                                                fraction = phaseFraction,
+                                            )
+                                            profileHeight = lerp(
+                                                start = minProfileSize,
+                                                stop = maxProfileSize,
+                                                fraction = phaseFraction,
+                                            )
+
+                                        } else if (isHeaderInFourthPhase().first) {
+                                            profileWidth = headerContainerWidth
+                                            profileHeight = headerHeight
+                                        }
                                     }
                                 }
 
-                                println("PointerEventType.Move, delta: $delta / deltaInDp: $deltaInDp")
+                                // println("PointerEventType.Move, delta: $delta / deltaInDp: $deltaInDp")
                             }
                         }
                     }
@@ -182,7 +227,10 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
 
     Column(
         modifier = Modifier
-            .fillMaxSize(),
+            .fillMaxSize()
+            .onSizeChanged {
+                headerContainerWidth = with(density) { it.width.toDp() }
+            },
     ) {
         Box(
             modifier = Modifier
@@ -190,21 +238,11 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                 .height(animatedHeaderHeight)
                 .background(Color.Gray),
         ) {
-            IconButton(
-                onClick = {},
-                modifier = Modifier.size(backButtonSize),
-            ) {
-                Icon(
-                    Icons.AutoMirrored.Default.ArrowBack,
-                    contentDescription = null,
-                    tint = Color.White,
-                )
-            }
-
             Row(
                 modifier = Modifier
                     .offset {
-                        IntOffset(
+                        if (isHeaderInFourthPhase().first) IntOffset(0, 0)
+                        else IntOffset(
                             x = with(density) {
                                 lerp(
                                     start = backButtonSize,
@@ -233,7 +271,8 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                     painter = painterResource(R.drawable.profile),
                     null,
                     modifier = Modifier
-                        .size(animatedProfileSize)
+                        .width(animatedProfileWidth)
+                        .height(animatedProfileHeight)
                         .clip(shape = CircleShape)
                 )
                 Column {
@@ -248,6 +287,17 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                         fontSize = 12.sp,
                     )
                 }
+            }
+
+            IconButton(
+                onClick = {},
+                modifier = Modifier.size(backButtonSize),
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Default.ArrowBack,
+                    contentDescription = null,
+                    tint = Color.White,
+                )
             }
         }
         LazyColumn(
