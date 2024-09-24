@@ -3,10 +3,8 @@ package com.mstf.telegramprofileanimations.ui
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -29,7 +27,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -43,10 +40,12 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.coerceIn
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
+import androidx.compose.ui.unit.sp
 import com.mstf.telegramprofileanimations.R
 
 @Composable
@@ -80,7 +79,25 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
 
     var profileCornerRadius by remember { mutableStateOf(50.dp) }
 
-    //                                        phase completion fraction
+    var profileInfoOffset by remember {
+        mutableStateOf(
+            IntOffset(
+                with(density) {
+                    (backButtonSize + backButtonPadding.times(3) + minProfileSize).toPx().toInt()
+                },
+                with(density) { backButtonPadding.toPx().toInt() },
+            )
+        )
+    }
+
+    //                                         phase completion fraction
+    fun isHeaderInSecondPhase(): Pair<Boolean, Float> {
+        return Pair(
+            headerHeight > minHeaderHeight && headerHeight < maxHeaderHeight / 5 * 2,
+            (headerHeight - minHeaderHeight) / ((maxHeaderHeight / 5 * 2) - minHeaderHeight)
+        )
+    }
+
     fun isHeaderInThirdPhase(): Pair<Boolean, Float> {
         return Pair(
             headerHeight in maxHeaderHeight / 5 * 2..maxHeaderHeight / 5 * 3,
@@ -194,7 +211,34 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                                                     .div(5)
                                                     .times(2) - minHeaderHeight)
 
-                                        if (isHeaderInThirdPhase().first) {
+                                        if (isHeaderInSecondPhase().first) {
+                                            val phaseFraction = isHeaderInSecondPhase().second
+
+                                            profileInfoOffset = IntOffset(
+                                                x = with(density) {
+                                                    lerp(
+                                                        start = backButtonSize +
+                                                                backButtonPadding.times(3) +
+                                                                minProfileSize,
+                                                        stop = backButtonPadding.times(4) +
+                                                                minProfileSize,
+                                                        fraction = phaseFraction,
+                                                    )
+                                                        .toPx()
+                                                        .toInt()
+                                                },
+                                                y = with(density) {
+                                                    lerp(
+                                                        start = backButtonPadding,
+                                                        stop = backButtonSize - backButtonPadding,
+                                                        fraction = phaseFraction,
+                                                    )
+                                                        .toPx()
+                                                        .toInt()
+                                                },
+                                            )
+
+                                        } else if (isHeaderInThirdPhase().first) {
                                             val phaseFraction = isHeaderInThirdPhase().second
                                             // println("In third phase, fraction: $phaseFraction")
 
@@ -233,21 +277,27 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                 headerContainerWidth = with(density) { it.width.toDp() }
             },
     ) {
+        val isHeaderInThirdPhase = isHeaderInThirdPhase()
+        val isHeaderInFourthPhase = isHeaderInFourthPhase()
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(
                     if (!isDragging &&
-                        (isHeaderInThirdPhase().first || isHeaderInFourthPhase().first)
+                        (isHeaderInThirdPhase.first || isHeaderInFourthPhase.first)
                     ) animatedHeaderHeight
                     else headerHeight
                 )
                 .background(Color.Gray),
         ) {
-            Row(
+            Image(
+                painter = painterResource(R.drawable.profile),
+                null,
                 modifier = Modifier
+                    .padding(horizontal = if (isHeaderInFourthPhase.first) 0.dp else backButtonPadding)
                     .offset {
-                        if (isHeaderInFourthPhase().first) IntOffset(0, 0)
+                        if (isHeaderInFourthPhase.first) IntOffset(0, 0)
                         else IntOffset(
                             x = with(density) {
                                 lerp(
@@ -269,47 +319,37 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                             }
                         )
                     }
-                    .padding(horizontal = if (isHeaderInFourthPhase().first) 0.dp else backButtonPadding),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    .width(
+                        if (
+                            (isHeaderInThirdPhase.first && isHeaderInThirdPhase.second > 0.9) ||
+                            (isHeaderInFourthPhase.first && isHeaderInFourthPhase.second < 0.1)
+                        ) animatedProfileWidth
+                        else profileWidth
+                    )
+                    .height(
+                        if (
+                            (isHeaderInThirdPhase.first && isHeaderInThirdPhase.second > 0.9) ||
+                            (isHeaderInFourthPhase.first && isHeaderInFourthPhase.second < 0.1)
+                        ) animatedProfileHeight
+                        else profileHeight
+                    )
+                    .clip(shape = RoundedCornerShape(profileCornerRadius)),
+                contentScale = ContentScale.Crop,
+            )
+
+            Column(
+                modifier = Modifier.offset { profileInfoOffset }
             ) {
-                val isHeaderInThirdPhase = isHeaderInThirdPhase()
-                val isHeaderInFourthPhase = isHeaderInFourthPhase()
-                Image(
-                    painter = painterResource(R.drawable.profile),
-                    null,
-                    modifier = Modifier
-                        .width(
-                            if (
-                                (isHeaderInThirdPhase.first && isHeaderInThirdPhase.second > 0.9) ||
-                                (isHeaderInFourthPhase.first && isHeaderInFourthPhase.second < 0.1)
-                            ) animatedProfileWidth
-                            else profileWidth
-                        )
-                        .height(
-                            if (
-                                (isHeaderInThirdPhase.first && isHeaderInThirdPhase.second > 0.9) ||
-                                (isHeaderInFourthPhase.first && isHeaderInFourthPhase.second < 0.1)
-                            ) animatedProfileHeight
-                            else profileHeight
-                        )
-                        .clip(shape = RoundedCornerShape(profileCornerRadius)),
-                    contentScale = ContentScale.Crop,
+                Text(
+                    "Mostafa",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
                 )
-                /*
-                Column {
-                    Text(
-                        "Mostafa",
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Text(
-                        "last seen recently",
-                        color = Color.White,
-                        fontSize = 12.sp,
-                    )
-                }
-                */
+                Text(
+                    "last seen recently",
+                    color = Color.White,
+                    fontSize = 12.sp,
+                )
             }
 
             IconButton(
