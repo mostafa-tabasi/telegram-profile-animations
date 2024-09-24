@@ -1,7 +1,6 @@
 package com.mstf.telegramprofileanimations.ui
 
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -17,7 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
@@ -40,15 +39,14 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.coerceIn
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
-import androidx.compose.ui.unit.sp
 import com.mstf.telegramprofileanimations.R
 
 @Composable
@@ -63,7 +61,6 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
     val animatedHeaderHeight by animateDpAsState(
         targetValue = headerHeight,
         label = "header_height",
-        animationSpec = tween(50)
     )
     var headerHeightDelta by remember { mutableFloatStateOf(0f) }
     var headerContainerWidth by remember { mutableStateOf(0.dp) }
@@ -80,6 +77,8 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
         targetValue = profileHeight,
         label = "profile_height",
     )
+
+    var profileCornerRadius by remember { mutableStateOf(50.dp) }
 
     //                                        phase completion fraction
     fun isHeaderInThirdPhase(): Pair<Boolean, Float> {
@@ -209,11 +208,13 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                                                 stop = maxProfileSize,
                                                 fraction = phaseFraction,
                                             )
-
                                         } else if (isHeaderInFourthPhase().first) {
                                             profileWidth = headerContainerWidth
                                             profileHeight = headerHeight
                                         }
+
+                                        profileCornerRadius =
+                                            if (isHeaderInFourthPhase().first) 0.dp else 50.dp
                                     }
                                 }
 
@@ -235,7 +236,12 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(animatedHeaderHeight)
+                .height(
+                    if (!isDragging &&
+                        (isHeaderInThirdPhase().first || isHeaderInFourthPhase().first)
+                    ) animatedHeaderHeight
+                    else headerHeight
+                )
                 .background(Color.Gray),
         ) {
             Row(
@@ -263,18 +269,34 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                             }
                         )
                     }
-                    .padding(horizontal = backButtonPadding),
+                    .padding(horizontal = if (isHeaderInFourthPhase().first) 0.dp else backButtonPadding),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                val isHeaderInThirdPhase = isHeaderInThirdPhase()
+                val isHeaderInFourthPhase = isHeaderInFourthPhase()
                 Image(
                     painter = painterResource(R.drawable.profile),
                     null,
                     modifier = Modifier
-                        .width(animatedProfileWidth)
-                        .height(animatedProfileHeight)
-                        .clip(shape = CircleShape)
+                        .width(
+                            if (
+                                (isHeaderInThirdPhase.first && isHeaderInThirdPhase.second > 0.9) ||
+                                (isHeaderInFourthPhase.first && isHeaderInFourthPhase.second < 0.1)
+                            ) animatedProfileWidth
+                            else profileWidth
+                        )
+                        .height(
+                            if (
+                                (isHeaderInThirdPhase.first && isHeaderInThirdPhase.second > 0.9) ||
+                                (isHeaderInFourthPhase.first && isHeaderInFourthPhase.second < 0.1)
+                            ) animatedProfileHeight
+                            else profileHeight
+                        )
+                        .clip(shape = RoundedCornerShape(profileCornerRadius)),
+                    contentScale = ContentScale.Crop,
                 )
+                /*
                 Column {
                     Text(
                         "Mostafa",
@@ -287,6 +309,7 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                         fontSize = 12.sp,
                     )
                 }
+                */
             }
 
             IconButton(
