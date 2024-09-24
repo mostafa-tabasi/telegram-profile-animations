@@ -125,7 +125,6 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                 if (headerHeight >= maxHeaderHeight) return Offset.Zero
                 if (lazyListState.canScrollBackward && delta > 0) return Offset.Zero
 
-                // println("=== onPreScroll, deltaInDp: ${with(density) { delta.toDp() }} / canScrollForward: ${lazyListState.canScrollForward} / canScrollBackward: ${lazyListState.canScrollBackward}")
                 return Offset(available.x, available.y)
             }
         }
@@ -142,8 +141,6 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                         when (event.type) {
                             PointerEventType.Press -> {
                                 isDragging = true
-
-                                // println("PointerEventType.Press")
                             }
 
                             PointerEventType.Release -> {
@@ -164,6 +161,15 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
 
                                         profileWidth = minProfileSize
                                         profileHeight = minProfileSize
+
+                                        profileInfoOffset = IntOffset(
+                                            x = (backButtonPadding.times(4) + minProfileSize)
+                                                .toPx()
+                                                .toInt(),
+                                            y = (backButtonSize - backButtonPadding)
+                                                .toPx()
+                                                .toInt(),
+                                        )
                                     }
 
                                     headerHeight >= maxHeaderHeight
@@ -178,8 +184,6 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
 
                                     else -> {}
                                 }
-
-                                // println("PointerEventType.Release")
                             }
 
                             PointerEventType.Move -> {
@@ -215,32 +219,27 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                                             val phaseFraction = isHeaderInSecondPhase().second
 
                                             profileInfoOffset = IntOffset(
-                                                x = with(density) {
-                                                    lerp(
-                                                        start = backButtonSize +
-                                                                backButtonPadding.times(3) +
-                                                                minProfileSize,
-                                                        stop = backButtonPadding.times(4) +
-                                                                minProfileSize,
-                                                        fraction = phaseFraction,
-                                                    )
-                                                        .toPx()
-                                                        .toInt()
-                                                },
-                                                y = with(density) {
-                                                    lerp(
-                                                        start = backButtonPadding,
-                                                        stop = backButtonSize - backButtonPadding,
-                                                        fraction = phaseFraction,
-                                                    )
-                                                        .toPx()
-                                                        .toInt()
-                                                },
+                                                x = lerp(
+                                                    start = backButtonSize +
+                                                            backButtonPadding.times(3) +
+                                                            minProfileSize,
+                                                    stop = backButtonPadding.times(4) +
+                                                            minProfileSize,
+                                                    fraction = phaseFraction,
+                                                )
+                                                    .toPx()
+                                                    .toInt(),
+                                                y = lerp(
+                                                    start = backButtonPadding,
+                                                    stop = backButtonSize - backButtonPadding,
+                                                    fraction = phaseFraction,
+                                                )
+                                                    .toPx()
+                                                    .toInt(),
                                             )
 
                                         } else if (isHeaderInThirdPhase().first) {
                                             val phaseFraction = isHeaderInThirdPhase().second
-                                            // println("In third phase, fraction: $phaseFraction")
 
                                             profileWidth = lerp(
                                                 start = minProfileSize,
@@ -252,6 +251,23 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                                                 stop = maxProfileSize,
                                                 fraction = phaseFraction,
                                             )
+
+                                            val profileSizeDifference =
+                                                profileWidth - minProfileSize
+
+                                            profileInfoOffset = IntOffset(
+                                                x = (backButtonPadding.times(4) +
+                                                        minProfileSize +
+                                                        profileSizeDifference)
+                                                    .toPx()
+                                                    .toInt(),
+                                                y = (backButtonSize -
+                                                        backButtonPadding +
+                                                        profileSizeDifference.div(2))
+                                                    .toPx()
+                                                    .toInt(),
+                                            )
+
                                         } else if (isHeaderInFourthPhase().first) {
                                             profileWidth = headerContainerWidth
                                             profileHeight = headerHeight
@@ -261,8 +277,6 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                                             if (isHeaderInFourthPhase().first) 0.dp else 50.dp
                                     }
                                 }
-
-                                // println("PointerEventType.Move, delta: $delta / deltaInDp: $deltaInDp")
                             }
                         }
                     }
