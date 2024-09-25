@@ -1,6 +1,7 @@
 package com.mstf.telegramprofileanimations.ui
 
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateIntOffsetAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -117,6 +118,11 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
             ((headerHeight - maxHeaderHeight / 5 * 3) / (maxHeaderHeight - maxHeaderHeight / 5 * 3))
         )
     }
+
+    val animatedUsernameFontSize by animateFloatAsState(
+        targetValue = if (isHeaderInFourthPhase().first) 24f else 16f,
+        label = "username_font_size"
+    )
 
     var isDragging by remember { mutableStateOf(false) }
     val lazyListState = rememberLazyListState()
@@ -395,6 +401,7 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                     "Mostafa",
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
+                    fontSize = animatedUsernameFontSize.sp
                 )
                 Text(
                     "last seen recently",
