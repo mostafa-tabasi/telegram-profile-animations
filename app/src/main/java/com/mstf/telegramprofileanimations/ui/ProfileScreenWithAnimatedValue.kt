@@ -1,6 +1,7 @@
 package com.mstf.telegramprofileanimations.ui
 
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateIntOffsetAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -79,6 +80,7 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
 
     var profileCornerRadius by remember { mutableStateOf(50.dp) }
 
+    var profileInfoHeight by remember { mutableStateOf(0.dp) }
     var profileInfoOffset by remember {
         mutableStateOf(
             IntOffset(
@@ -89,6 +91,10 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
             )
         )
     }
+    val animatedProfileInfoOffset by animateIntOffsetAsState(
+        targetValue = profileInfoOffset,
+        label = "profile_info",
+    )
 
     //                                         phase completion fraction
     fun isHeaderInSecondPhase(): Pair<Boolean, Float> {
@@ -180,6 +186,16 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
 
                                         profileWidth = headerContainerWidth
                                         profileHeight = headerHeight
+
+                                        profileInfoOffset = IntOffset(
+                                            x = backButtonPadding
+                                                .times(2)
+                                                .toPx()
+                                                .toInt(),
+                                            y = (headerHeight - profileInfoHeight - backButtonPadding)
+                                                .toPx()
+                                                .toInt(),
+                                        )
                                     }
 
                                     else -> {}
@@ -271,6 +287,16 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                                         } else if (isHeaderInFourthPhase().first) {
                                             profileWidth = headerContainerWidth
                                             profileHeight = headerHeight
+
+                                            profileInfoOffset = IntOffset(
+                                                x = backButtonPadding
+                                                    .times(2)
+                                                    .toPx()
+                                                    .toInt(),
+                                                y = (headerHeight - profileInfoHeight - backButtonPadding)
+                                                    .toPx()
+                                                    .toInt(),
+                                            )
                                         }
 
                                         profileCornerRadius =
@@ -352,7 +378,18 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
             )
 
             Column(
-                modifier = Modifier.offset { profileInfoOffset }
+                modifier = Modifier
+                    .onSizeChanged {
+                        profileInfoHeight = with(density) { it.height.toDp() }
+                    }
+                    .offset {
+                        if (
+                            (isHeaderInThirdPhase.first && isHeaderInThirdPhase.second > 0.9) ||
+                            (isHeaderInFourthPhase.first && isHeaderInFourthPhase.second < 0.1) ||
+                            !isDragging
+                        ) animatedProfileInfoOffset
+                        else profileInfoOffset
+                    }
             ) {
                 Text(
                     "Mostafa",
