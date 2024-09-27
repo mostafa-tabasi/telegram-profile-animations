@@ -3,7 +3,6 @@ package com.mstf.telegramprofileanimations.ui
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.animateIntOffsetAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -73,20 +72,12 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
     var profileCornerRadius by remember { mutableStateOf(50.dp) }
 
     var profileInfoHeight by remember { mutableStateOf(0.dp) }
-    var profileInfoOffset by remember {
-        mutableStateOf(
-            IntOffset(
-                with(density) {
-                    (backButtonSize + backButtonPadding.times(3) + minProfileSize).toPx().toInt()
-                },
-                with(density) { backButtonPadding.toPx().toInt() },
-            )
+    val profileInfoOffsetX = remember {
+        Animatable(
+            with(density) { (backButtonSize + backButtonPadding.times(3) + minProfileSize).toPx() }
         )
     }
-    val animatedProfileInfoOffset by animateIntOffsetAsState(
-        targetValue = profileInfoOffset,
-        label = "profile_info",
-    )
+    val profileInfoOffsetY = remember { Animatable(with(density) { backButtonPadding.toPx() }) }
 
     //                                         phase completion fraction
     fun isHeaderInSecondPhase(): Pair<Boolean, Float> {
@@ -170,14 +161,18 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                                         scope.launch { profileWidth.animateTo(minProfileSize.value) }
                                         scope.launch { profileHeight.animateTo(minProfileSize.value) }
 
-                                        profileInfoOffset = IntOffset(
-                                            x = (backButtonPadding.times(4) + minProfileSize)
-                                                .toPx()
-                                                .toInt(),
-                                            y = (backButtonSize - backButtonPadding)
-                                                .toPx()
-                                                .toInt(),
-                                        )
+                                        scope.launch {
+                                            profileInfoOffsetX.animateTo(
+                                                (backButtonPadding.times(4) + minProfileSize)
+                                                    .toPx()
+                                            )
+                                        }
+                                        scope.launch {
+                                            profileInfoOffsetY.animateTo(
+                                                (backButtonSize - backButtonPadding)
+                                                    .toPx()
+                                            )
+                                        }
                                     }
 
                                     headerHeight.dp() >= maxHeaderHeight
@@ -191,15 +186,19 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                                         scope.launch { profileWidth.animateTo(headerContainerWidth.value) }
                                         scope.launch { profileHeight.animateTo(maxHeaderHeight.value) }
 
-                                        profileInfoOffset = IntOffset(
-                                            x = backButtonPadding
-                                                .times(2)
-                                                .toPx()
-                                                .toInt(),
-                                            y = (maxHeaderHeight - profileInfoHeight - backButtonPadding)
-                                                .toPx()
-                                                .toInt(),
-                                        )
+                                        scope.launch {
+                                            profileInfoOffsetX.animateTo(
+                                                backButtonPadding
+                                                    .times(2)
+                                                    .toPx()
+                                            )
+                                        }
+                                        scope.launch {
+                                            profileInfoOffsetY.animateTo(
+                                                (maxHeaderHeight - profileInfoHeight - backButtonPadding)
+                                                    .toPx()
+                                            )
+                                        }
                                     }
 
                                     else -> {}
@@ -232,25 +231,29 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                                         if (isHeaderInSecondPhase().first) {
                                             val phaseFraction = isHeaderInSecondPhase().second
 
-                                            profileInfoOffset = IntOffset(
-                                                x = lerp(
-                                                    start = backButtonSize +
-                                                            backButtonPadding.times(3) +
-                                                            minProfileSize,
-                                                    stop = backButtonPadding.times(4) +
-                                                            minProfileSize,
-                                                    fraction = phaseFraction,
+                                            scope.launch {
+                                                profileInfoOffsetX.snapTo(
+                                                    lerp(
+                                                        start = backButtonSize +
+                                                                backButtonPadding.times(3) +
+                                                                minProfileSize,
+                                                        stop = backButtonPadding.times(4) +
+                                                                minProfileSize,
+                                                        fraction = phaseFraction,
+                                                    )
+                                                        .toPx()
                                                 )
-                                                    .toPx()
-                                                    .toInt(),
-                                                y = lerp(
-                                                    start = backButtonPadding,
-                                                    stop = backButtonSize - backButtonPadding,
-                                                    fraction = phaseFraction,
+                                            }
+                                            scope.launch {
+                                                profileInfoOffsetY.snapTo(
+                                                    lerp(
+                                                        start = backButtonPadding,
+                                                        stop = backButtonSize - backButtonPadding,
+                                                        fraction = phaseFraction,
+                                                    )
+                                                        .toPx()
                                                 )
-                                                    .toPx()
-                                                    .toInt(),
-                                            )
+                                            }
 
                                         } else if (isHeaderInThirdPhase().first) {
                                             val phaseFraction = isHeaderInThirdPhase().second
@@ -276,23 +279,28 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
 
                                             val profileSizeDifference =
                                                 (profileWidth.dp() - minProfileSize)
-                                                    .coerceIn(
-                                                        0.dp,
-                                                        (maxProfileSize - minProfileSize) + 50.dp
-                                                    )
+                                                    .coerceIn(0.dp, maxProfileSize - minProfileSize)
 
-                                            profileInfoOffset = IntOffset(
-                                                x = (backButtonPadding.times(4) +
+                                            scope.launch {
+                                                val offset = (backButtonPadding.times(4) +
                                                         minProfileSize +
                                                         profileSizeDifference)
                                                     .toPx()
-                                                    .toInt(),
-                                                y = (backButtonSize -
+
+                                                if (phaseFraction > 0.9f)
+                                                    profileInfoOffsetX.animateTo(offset)
+                                                else profileInfoOffsetX.snapTo(offset)
+                                            }
+                                            scope.launch {
+                                                val offset = (backButtonSize -
                                                         backButtonPadding +
                                                         profileSizeDifference.div(2))
                                                     .toPx()
-                                                    .toInt(),
-                                            )
+
+                                                if (phaseFraction > 0.9f)
+                                                    profileInfoOffsetY.animateTo(offset)
+                                                else profileInfoOffsetY.snapTo(offset)
+                                            }
 
                                         } else if (isHeaderInFourthPhase().first) {
                                             val fourthPhase = isHeaderInFourthPhase()
@@ -308,15 +316,25 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                                                 else profileHeight.animateTo(headerHeight.value)
                                             }
 
-                                            profileInfoOffset = IntOffset(
-                                                x = backButtonPadding
+                                            scope.launch {
+                                                val offset = backButtonPadding
                                                     .times(2)
                                                     .toPx()
-                                                    .toInt(),
-                                                y = (headerHeight.dp() - profileInfoHeight - backButtonPadding)
+
+                                                if (fourthPhase.second > 0.1f)
+                                                    profileInfoOffsetX.snapTo(offset)
+                                                else profileInfoOffsetX.animateTo(offset)
+                                            }
+                                            scope.launch {
+                                                val offset = (headerHeight.dp() -
+                                                        profileInfoHeight -
+                                                        backButtonPadding)
                                                     .toPx()
-                                                    .toInt(),
-                                            )
+
+                                                if (fourthPhase.second > 0.1f)
+                                                    profileInfoOffsetY.snapTo(offset)
+                                                else profileInfoOffsetY.animateTo(offset)
+                                            }
                                         }
 
                                         profileCornerRadius =
@@ -387,12 +405,10 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                         profileInfoHeight = with(density) { it.height.toDp() }
                     }
                     .offset {
-                        if (
-                            (isHeaderInThirdPhase.first && isHeaderInThirdPhase.second > 0.9) ||
-                            (isHeaderInFourthPhase.first && isHeaderInFourthPhase.second < 0.1) ||
-                            !isDragging
-                        ) animatedProfileInfoOffset
-                        else profileInfoOffset
+                        IntOffset(
+                            x = profileInfoOffsetX.value.toInt(),
+                            y = profileInfoOffsetY.value.toInt(),
+                        )
                     }
             ) {
                 Text(
