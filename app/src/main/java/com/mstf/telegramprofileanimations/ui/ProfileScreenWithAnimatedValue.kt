@@ -2,7 +2,6 @@ package com.mstf.telegramprofileanimations.ui
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateIntOffsetAsState
 import androidx.compose.foundation.Image
@@ -47,6 +46,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.coerceIn
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
@@ -67,16 +67,8 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
 
     val minProfileSize = 48.dp
     val maxProfileSize = minProfileSize.times(2)
-    var profileWidth by remember { mutableStateOf(minProfileSize) }
-    val animatedProfileWidth by animateDpAsState(
-        targetValue = profileWidth,
-        label = "profile_width",
-    )
-    var profileHeight by remember { mutableStateOf(minProfileSize) }
-    val animatedProfileHeight by animateDpAsState(
-        targetValue = profileHeight,
-        label = "profile_height",
-    )
+    val profileWidth = remember { Animatable(minProfileSize.value) }
+    val profileHeight = remember { Animatable(minProfileSize.value) }
 
     var profileCornerRadius by remember { mutableStateOf(50.dp) }
 
@@ -175,8 +167,8 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                                             )
                                         }
 
-                                        profileWidth = minProfileSize
-                                        profileHeight = minProfileSize
+                                        scope.launch { profileWidth.animateTo(minProfileSize.value) }
+                                        scope.launch { profileHeight.animateTo(minProfileSize.value) }
 
                                         profileInfoOffset = IntOffset(
                                             x = (backButtonPadding.times(4) + minProfileSize)
@@ -196,8 +188,8 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                                             headerHeight.animateTo(maxHeaderHeight.value)
                                         }
 
-                                        profileWidth = headerContainerWidth
-                                        profileHeight = maxHeaderHeight
+                                        scope.launch { profileWidth.animateTo(headerContainerWidth.value) }
+                                        scope.launch { profileHeight.animateTo(maxHeaderHeight.value) }
 
                                         profileInfoOffset = IntOffset(
                                             x = backButtonPadding
@@ -263,19 +255,31 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                                         } else if (isHeaderInThirdPhase().first) {
                                             val phaseFraction = isHeaderInThirdPhase().second
 
-                                            profileWidth = lerp(
-                                                start = minProfileSize,
-                                                stop = maxProfileSize,
-                                                fraction = phaseFraction,
-                                            )
-                                            profileHeight = lerp(
-                                                start = minProfileSize,
-                                                stop = maxProfileSize,
-                                                fraction = phaseFraction,
-                                            )
+                                            scope.launch {
+                                                profileWidth.animateTo(
+                                                    lerp(
+                                                        start = minProfileSize,
+                                                        stop = maxProfileSize,
+                                                        fraction = phaseFraction,
+                                                    ).value
+                                                )
+                                            }
+                                            scope.launch {
+                                                profileHeight.animateTo(
+                                                    lerp(
+                                                        start = minProfileSize,
+                                                        stop = maxProfileSize,
+                                                        fraction = phaseFraction,
+                                                    ).value
+                                                )
+                                            }
 
                                             val profileSizeDifference =
-                                                profileWidth - minProfileSize
+                                                (profileWidth.dp() - minProfileSize)
+                                                    .coerceIn(
+                                                        0.dp,
+                                                        (maxProfileSize - minProfileSize) + 50.dp
+                                                    )
 
                                             profileInfoOffset = IntOffset(
                                                 x = (backButtonPadding.times(4) +
@@ -291,8 +295,18 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                                             )
 
                                         } else if (isHeaderInFourthPhase().first) {
-                                            profileWidth = headerContainerWidth
-                                            profileHeight = headerHeight.dp()
+                                            val fourthPhase = isHeaderInFourthPhase()
+
+                                            scope.launch {
+                                                if (fourthPhase.second > 0.1)
+                                                    profileWidth.snapTo(headerContainerWidth.value)
+                                                else profileWidth.animateTo(headerContainerWidth.value)
+                                            }
+                                            scope.launch {
+                                                if (fourthPhase.second > 0.1)
+                                                    profileHeight.snapTo(headerHeight.value)
+                                                else profileHeight.animateTo(headerHeight.value)
+                                            }
 
                                             profileInfoOffset = IntOffset(
                                                 x = backButtonPadding
@@ -361,20 +375,8 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                             }
                         )
                     }
-                    .width(
-                        if (
-                            (isHeaderInThirdPhase.first && isHeaderInThirdPhase.second > 0.9) ||
-                            (isHeaderInFourthPhase.first && isHeaderInFourthPhase.second < 0.1)
-                        ) animatedProfileWidth
-                        else profileWidth
-                    )
-                    .height(
-                        if (
-                            (isHeaderInThirdPhase.first && isHeaderInThirdPhase.second > 0.9) ||
-                            (isHeaderInFourthPhase.first && isHeaderInFourthPhase.second < 0.1)
-                        ) animatedProfileHeight
-                        else profileHeight
-                    )
+                    .width(profileWidth.dp())
+                    .height(profileHeight.dp())
                     .clip(shape = RoundedCornerShape(profileCornerRadius)),
                 contentScale = ContentScale.Crop,
             )
