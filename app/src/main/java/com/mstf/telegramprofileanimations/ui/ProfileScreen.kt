@@ -2,7 +2,6 @@ package com.mstf.telegramprofileanimations.ui
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -53,19 +52,19 @@ import com.mstf.telegramprofileanimations.R
 import kotlinx.coroutines.launch
 
 @Composable
-fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
+fun ProfileScreen(modifier: Modifier = Modifier) {
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
 
     val backButtonSize = 60.dp
     val backButtonPadding = 8.dp
     val minHeaderHeight = 60.dp
-    val maxHeaderHeight = minHeaderHeight.times(5)
+    val maxHeaderHeight = minHeaderHeight * 5
     val headerHeight = remember { Animatable(minHeaderHeight.value) }
     var headerContainerWidth by remember { mutableStateOf(0.dp) }
 
     val minProfileSize = 48.dp
-    val maxProfileSize = minProfileSize.times(2)
+    val maxProfileSize = minProfileSize * 2
     val profileWidth = remember { Animatable(minProfileSize.value) }
     val profileHeight = remember { Animatable(minProfileSize.value) }
 
@@ -74,7 +73,7 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
     var profileInfoHeight by remember { mutableStateOf(0.dp) }
     val profileInfoOffsetX = remember {
         Animatable(
-            with(density) { (backButtonSize + backButtonPadding.times(3) + minProfileSize).toPx() }
+            with(density) { (backButtonSize + (backButtonPadding * 3) + minProfileSize).toPx() }
         )
     }
     val profileInfoOffsetY = remember { Animatable(with(density) { backButtonPadding.toPx() }) }
@@ -100,11 +99,6 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
             ((headerHeight.dp() - maxHeaderHeight / 5 * 3) / (maxHeaderHeight - maxHeaderHeight / 5 * 3))
         )
     }
-
-    val animatedUsernameFontSize by animateFloatAsState(
-        targetValue = if (isHeaderInFourthPhase().first) 24f else 16f,
-        label = "username_font_size"
-    )
 
     var isDragging by remember { mutableStateOf(false) }
     val lazyListState = rememberLazyListState()
@@ -142,19 +136,10 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                                 isDragging = false
 
                                 when {
-                                    headerHeight.dp() >= maxHeaderHeight
-                                        .div(5)
-                                        .times(2) &&
-                                            headerHeight.dp() < maxHeaderHeight
-                                        .div(5)
-                                        .times(3)
-                                    -> {
+                                    isHeaderInThirdPhase().first -> {
                                         scope.launch {
                                             headerHeight.animateTo(
-                                                maxHeaderHeight
-                                                    .value
-                                                    .div(5)
-                                                    .times(2)
+                                                (maxHeaderHeight.value / 5) * 2
                                             )
                                         }
 
@@ -163,35 +148,24 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
 
                                         scope.launch {
                                             profileInfoOffsetX.animateTo(
-                                                (backButtonPadding.times(4) + minProfileSize)
-                                                    .toPx()
+                                                ((backButtonPadding * 4) + minProfileSize).toPx()
                                             )
                                         }
                                         scope.launch {
                                             profileInfoOffsetY.animateTo(
-                                                (backButtonSize - backButtonPadding)
-                                                    .toPx()
+                                                (backButtonSize - backButtonPadding).toPx()
                                             )
                                         }
                                     }
 
-                                    headerHeight.dp() >= maxHeaderHeight
-                                        .div(5)
-                                        .times(3)
-                                    -> {
-                                        scope.launch {
-                                            headerHeight.animateTo(maxHeaderHeight.value)
-                                        }
+                                    isHeaderInFourthPhase().first -> {
+                                        scope.launch { headerHeight.animateTo(maxHeaderHeight.value) }
 
                                         scope.launch { profileWidth.animateTo(headerContainerWidth.value) }
                                         scope.launch { profileHeight.animateTo(maxHeaderHeight.value) }
 
                                         scope.launch {
-                                            profileInfoOffsetX.animateTo(
-                                                backButtonPadding
-                                                    .times(2)
-                                                    .toPx()
-                                            )
+                                            profileInfoOffsetX.animateTo((backButtonPadding * 2).toPx())
                                         }
                                         scope.launch {
                                             profileInfoOffsetY.animateTo(
@@ -210,17 +184,18 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                                     event.changes[0].let { it.position.y - it.previousPosition.y }
                                 val deltaInDp = with(density) { delta.toDp() }
 
-                                if (skipDragEventCounter < 3) {
-                                    skipDragEventCounter++
-                                } else {
+                                if (skipDragEventCounter < 3) skipDragEventCounter++
+                                else {
                                     if (!lazyListState.canScrollBackward || delta < 0) {
-                                        val elasticityLevel =
-                                            if (isHeaderInThirdPhase().first) 3f else 1f
+                                        val secondPhase = isHeaderInSecondPhase()
+                                        val thirdPhase = isHeaderInThirdPhase()
+                                        val fourthPhase = isHeaderInFourthPhase()
+
+                                        val elasticityLevel = if (thirdPhase.first) 3f else 1f
 
                                         scope.launch {
                                             headerHeight.snapTo(
-                                                (headerHeight.value +
-                                                        deltaInDp.value.div(elasticityLevel))
+                                                (headerHeight.value + (deltaInDp.value / elasticityLevel))
                                                     .coerceIn(
                                                         minHeaderHeight.value,
                                                         maxHeaderHeight.value
@@ -228,112 +203,108 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                                             )
                                         }
 
-                                        if (isHeaderInSecondPhase().first) {
-                                            val phaseFraction = isHeaderInSecondPhase().second
+                                        when {
+                                            secondPhase.first -> {
+                                                val phaseFraction = secondPhase.second
 
-                                            scope.launch {
-                                                profileInfoOffsetX.snapTo(
-                                                    lerp(
-                                                        start = backButtonSize +
-                                                                backButtonPadding.times(3) +
-                                                                minProfileSize,
-                                                        stop = backButtonPadding.times(4) +
-                                                                minProfileSize,
-                                                        fraction = phaseFraction,
+                                                scope.launch {
+                                                    profileInfoOffsetX.snapTo(
+                                                        lerp(
+                                                            start = backButtonSize + (backButtonPadding * 3) + minProfileSize,
+                                                            stop = (backButtonPadding * 4) + minProfileSize,
+                                                            fraction = phaseFraction,
+                                                        )
+                                                            .toPx()
                                                     )
-                                                        .toPx()
-                                                )
-                                            }
-                                            scope.launch {
-                                                profileInfoOffsetY.snapTo(
-                                                    lerp(
-                                                        start = backButtonPadding,
-                                                        stop = backButtonSize - backButtonPadding,
-                                                        fraction = phaseFraction,
+                                                }
+                                                scope.launch {
+                                                    profileInfoOffsetY.snapTo(
+                                                        lerp(
+                                                            start = backButtonPadding,
+                                                            stop = backButtonSize - backButtonPadding,
+                                                            fraction = phaseFraction,
+                                                        )
+                                                            .toPx()
                                                     )
-                                                        .toPx()
-                                                )
+                                                }
                                             }
 
-                                        } else if (isHeaderInThirdPhase().first) {
-                                            val phaseFraction = isHeaderInThirdPhase().second
+                                            thirdPhase.first -> {
+                                                val phaseFraction = thirdPhase.second
 
-                                            scope.launch {
-                                                profileWidth.animateTo(
-                                                    lerp(
-                                                        start = minProfileSize,
-                                                        stop = maxProfileSize,
-                                                        fraction = phaseFraction,
-                                                    ).value
-                                                )
-                                            }
-                                            scope.launch {
-                                                profileHeight.animateTo(
-                                                    lerp(
-                                                        start = minProfileSize,
-                                                        stop = maxProfileSize,
-                                                        fraction = phaseFraction,
-                                                    ).value
-                                                )
-                                            }
+                                                scope.launch {
+                                                    profileWidth.animateTo(
+                                                        lerp(
+                                                            start = minProfileSize,
+                                                            stop = maxProfileSize,
+                                                            fraction = phaseFraction,
+                                                        ).value
+                                                    )
+                                                }
+                                                scope.launch {
+                                                    profileHeight.animateTo(
+                                                        lerp(
+                                                            start = minProfileSize,
+                                                            stop = maxProfileSize,
+                                                            fraction = phaseFraction,
+                                                        ).value
+                                                    )
+                                                }
 
-                                            val profileSizeDifference =
-                                                (profileWidth.dp() - minProfileSize)
-                                                    .coerceIn(0.dp, maxProfileSize - minProfileSize)
+                                                val profileSizeDifference =
+                                                    (profileWidth.dp() - minProfileSize)
+                                                        .coerceIn(
+                                                            0.dp,
+                                                            maxProfileSize - minProfileSize
+                                                        )
 
-                                            scope.launch {
-                                                val offset = (backButtonPadding.times(4) +
-                                                        minProfileSize +
-                                                        profileSizeDifference)
-                                                    .toPx()
+                                                scope.launch {
+                                                    val offset =
+                                                        ((backButtonPadding * 4) + minProfileSize + profileSizeDifference).toPx()
 
-                                                if (phaseFraction > 0.9f)
-                                                    profileInfoOffsetX.animateTo(offset)
-                                                else profileInfoOffsetX.snapTo(offset)
-                                            }
-                                            scope.launch {
-                                                val offset = (backButtonSize -
-                                                        backButtonPadding +
-                                                        profileSizeDifference.div(2))
-                                                    .toPx()
+                                                    if (phaseFraction > 0.9f)
+                                                        profileInfoOffsetX.animateTo(offset)
+                                                    else profileInfoOffsetX.snapTo(offset)
+                                                }
+                                                scope.launch {
+                                                    val offset =
+                                                        (backButtonSize - backButtonPadding + (profileSizeDifference / 2)).toPx()
 
-                                                if (phaseFraction > 0.9f)
-                                                    profileInfoOffsetY.animateTo(offset)
-                                                else profileInfoOffsetY.snapTo(offset)
-                                            }
-
-                                        } else if (isHeaderInFourthPhase().first) {
-                                            val fourthPhase = isHeaderInFourthPhase()
-
-                                            scope.launch {
-                                                if (fourthPhase.second > 0.1)
-                                                    profileWidth.snapTo(headerContainerWidth.value)
-                                                else profileWidth.animateTo(headerContainerWidth.value)
-                                            }
-                                            scope.launch {
-                                                if (fourthPhase.second > 0.1)
-                                                    profileHeight.snapTo(headerHeight.value)
-                                                else profileHeight.animateTo(headerHeight.value)
+                                                    if (phaseFraction > 0.9f)
+                                                        profileInfoOffsetY.animateTo(offset)
+                                                    else profileInfoOffsetY.snapTo(offset)
+                                                }
                                             }
 
-                                            scope.launch {
-                                                val offset = backButtonPadding
-                                                    .times(2)
-                                                    .toPx()
+                                            fourthPhase.first -> {
+                                                val phaseFraction = fourthPhase.second
 
-                                                if (fourthPhase.second > 0.1f)
-                                                    profileInfoOffsetX.snapTo(offset)
-                                                else profileInfoOffsetX.animateTo(offset)
-                                            }
-                                            scope.launch {
-                                                val offset = (headerHeight.dp() -
-                                                        profileInfoHeight -
-                                                        backButtonPadding)
-                                                    .toPx()
+                                                scope.launch {
+                                                    if (phaseFraction > 0.1)
+                                                        profileWidth.snapTo(headerContainerWidth.value)
+                                                    else profileWidth.animateTo(headerContainerWidth.value)
+                                                }
+                                                scope.launch {
+                                                    if (phaseFraction > 0.1)
+                                                        profileHeight.snapTo(headerHeight.value)
+                                                    else profileHeight.animateTo(headerHeight.value)
+                                                }
 
-                                                if (fourthPhase.second > 0.1f)
-                                                    profileInfoOffsetY.snapTo(offset)
-                                                else profileInfoOffsetY.animateTo(offset)
+                                                scope.launch {
+                                                    val offset = (backButtonPadding * 2).toPx()
+
+                                                    if (phaseFraction > 0.1f)
+                                                        profileInfoOffsetX.snapTo(offset)
+                                                    else profileInfoOffsetX.animateTo(offset)
+                                                }
+                                                scope.launch {
+                                                    val offset =
+                                                        (headerHeight.dp() - profileInfoHeight - backButtonPadding).toPx()
+
+                                                    if (phaseFraction > 0.1f)
+                                                        profileInfoOffsetY.snapTo(offset)
+                                                    else profileInfoOffsetY.animateTo(offset)
+                                                }
                                             }
                                         }
 
@@ -356,7 +327,6 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
             },
     ) {
         val isHeaderInSecondPhase = isHeaderInSecondPhase()
-        val isHeaderInThirdPhase = isHeaderInThirdPhase()
         val isHeaderInFourthPhase = isHeaderInFourthPhase()
 
         Box(
@@ -415,7 +385,7 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                     "Mostafa",
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
-                    fontSize = animatedUsernameFontSize.sp
+                    fontSize = if (isHeaderInFourthPhase.first) 24.sp else 16.sp
                 )
                 Text(
                     "last seen recently",
@@ -442,7 +412,16 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                 .background(Color.LightGray)
         ) {
             items(20) {
-                Text(text = "Item #$it", Modifier.padding(16.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(75.dp)
+                        .padding(8.dp)
+                        .background(
+                            Color.Gray.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(8.dp),
+                        ),
+                )
             }
         }
     }
