@@ -1,5 +1,7 @@
 package com.mstf.telegramprofileanimations.ui
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateIntOffsetAsState
@@ -24,10 +26,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,27 +45,24 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.coerceIn
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 import com.mstf.telegramprofileanimations.R
+import kotlinx.coroutines.launch
 
 @Composable
 fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
     val density = LocalDensity.current
+    val scope = rememberCoroutineScope()
 
     val backButtonSize = 60.dp
     val backButtonPadding = 8.dp
     val minHeaderHeight = 60.dp
     val maxHeaderHeight = minHeaderHeight.times(5)
-    var headerHeight by remember { mutableStateOf(minHeaderHeight) }
-    val animatedHeaderHeight by animateDpAsState(
-        targetValue = headerHeight,
-        label = "header_height",
-    )
-    var headerHeightDelta by remember { mutableFloatStateOf(0f) }
+    val headerHeight = remember { Animatable(minHeaderHeight.value) }
     var headerContainerWidth by remember { mutableStateOf(0.dp) }
 
     val minProfileSize = 48.dp
@@ -100,22 +99,22 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
     //                                         phase completion fraction
     fun isHeaderInSecondPhase(): Pair<Boolean, Float> {
         return Pair(
-            headerHeight > minHeaderHeight && headerHeight < maxHeaderHeight / 5 * 2,
-            (headerHeight - minHeaderHeight) / ((maxHeaderHeight / 5 * 2) - minHeaderHeight)
+            headerHeight.dp() > minHeaderHeight && headerHeight.dp() < maxHeaderHeight / 5 * 2,
+            (headerHeight.dp() - minHeaderHeight) / ((maxHeaderHeight / 5 * 2) - minHeaderHeight)
         )
     }
 
     fun isHeaderInThirdPhase(): Pair<Boolean, Float> {
         return Pair(
-            headerHeight in maxHeaderHeight / 5 * 2..maxHeaderHeight / 5 * 3,
-            (headerHeight - (maxHeaderHeight / 5 * 2)) / ((maxHeaderHeight / 5 * 3) - (maxHeaderHeight / 5 * 2))
+            headerHeight.dp() in maxHeaderHeight / 5 * 2..maxHeaderHeight / 5 * 3,
+            (headerHeight.dp() - (maxHeaderHeight / 5 * 2)) / ((maxHeaderHeight / 5 * 3) - (maxHeaderHeight / 5 * 2))
         )
     }
 
     fun isHeaderInFourthPhase(): Pair<Boolean, Float> {
         return Pair(
-            headerHeight > maxHeaderHeight / 5 * 3,
-            ((headerHeight - maxHeaderHeight / 5 * 3) / (maxHeaderHeight - maxHeaderHeight / 5 * 3))
+            headerHeight.dp() > maxHeaderHeight / 5 * 3,
+            ((headerHeight.dp() - maxHeaderHeight / 5 * 3) / (maxHeaderHeight - maxHeaderHeight / 5 * 3))
         )
     }
 
@@ -133,8 +132,8 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                 val delta = available.y
 
                 if (!isDragging) return Offset.Zero
-                if (headerHeight <= minHeaderHeight) return Offset.Zero
-                if (headerHeight >= maxHeaderHeight) return Offset.Zero
+                if (headerHeight.dp() <= minHeaderHeight) return Offset.Zero
+                if (headerHeight.dp() >= maxHeaderHeight) return Offset.Zero
                 if (lazyListState.canScrollBackward && delta > 0) return Offset.Zero
 
                 return Offset(available.x, available.y)
@@ -160,16 +159,21 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                                 isDragging = false
 
                                 when {
-                                    headerHeight >= maxHeaderHeight
+                                    headerHeight.dp() >= maxHeaderHeight
                                         .div(5)
                                         .times(2) &&
-                                            headerHeight < maxHeaderHeight
+                                            headerHeight.dp() < maxHeaderHeight
                                         .div(5)
                                         .times(3)
                                     -> {
-                                        headerHeight = maxHeaderHeight
-                                            .div(5)
-                                            .times(2)
+                                        scope.launch {
+                                            headerHeight.animateTo(
+                                                maxHeaderHeight
+                                                    .value
+                                                    .div(5)
+                                                    .times(2)
+                                            )
+                                        }
 
                                         profileWidth = minProfileSize
                                         profileHeight = minProfileSize
@@ -184,21 +188,23 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                                         )
                                     }
 
-                                    headerHeight >= maxHeaderHeight
+                                    headerHeight.dp() >= maxHeaderHeight
                                         .div(5)
                                         .times(3)
                                     -> {
-                                        headerHeight = maxHeaderHeight
+                                        scope.launch {
+                                            headerHeight.animateTo(maxHeaderHeight.value)
+                                        }
 
                                         profileWidth = headerContainerWidth
-                                        profileHeight = headerHeight
+                                        profileHeight = maxHeaderHeight
 
                                         profileInfoOffset = IntOffset(
                                             x = backButtonPadding
                                                 .times(2)
                                                 .toPx()
                                                 .toInt(),
-                                            y = (headerHeight - profileInfoHeight - backButtonPadding)
+                                            y = (maxHeaderHeight - profileInfoHeight - backButtonPadding)
                                                 .toPx()
                                                 .toInt(),
                                         )
@@ -218,24 +224,18 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                                 } else {
                                     if (!lazyListState.canScrollBackward || delta < 0) {
                                         val elasticityLevel =
-                                            if (
-                                                headerHeight > maxHeaderHeight
-                                                    .div(5)
-                                                    .times(2) &&
-                                                headerHeight < maxHeaderHeight
-                                                    .div(5)
-                                                    .times(3)
-                                            ) 3
-                                            else 1
+                                            if (isHeaderInThirdPhase().first) 3f else 1f
 
-                                        headerHeight =
-                                            (headerHeight + deltaInDp.div(elasticityLevel))
-                                                .coerceIn(minHeaderHeight, maxHeaderHeight)
-
-                                        headerHeightDelta = (headerHeight - minHeaderHeight) /
-                                                (maxHeaderHeight
-                                                    .div(5)
-                                                    .times(2) - minHeaderHeight)
+                                        scope.launch {
+                                            headerHeight.snapTo(
+                                                (headerHeight.value +
+                                                        deltaInDp.value.div(elasticityLevel))
+                                                    .coerceIn(
+                                                        minHeaderHeight.value,
+                                                        maxHeaderHeight.value
+                                                    )
+                                            )
+                                        }
 
                                         if (isHeaderInSecondPhase().first) {
                                             val phaseFraction = isHeaderInSecondPhase().second
@@ -292,14 +292,14 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
 
                                         } else if (isHeaderInFourthPhase().first) {
                                             profileWidth = headerContainerWidth
-                                            profileHeight = headerHeight
+                                            profileHeight = headerHeight.dp()
 
                                             profileInfoOffset = IntOffset(
                                                 x = backButtonPadding
                                                     .times(2)
                                                     .toPx()
                                                     .toInt(),
-                                                y = (headerHeight - profileInfoHeight - backButtonPadding)
+                                                y = (headerHeight.dp() - profileInfoHeight - backButtonPadding)
                                                     .toPx()
                                                     .toInt(),
                                             )
@@ -323,18 +323,14 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                 headerContainerWidth = with(density) { it.width.toDp() }
             },
     ) {
+        val isHeaderInSecondPhase = isHeaderInSecondPhase()
         val isHeaderInThirdPhase = isHeaderInThirdPhase()
         val isHeaderInFourthPhase = isHeaderInFourthPhase()
 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(
-                    if (!isDragging &&
-                        (isHeaderInThirdPhase.first || isHeaderInFourthPhase.first)
-                    ) animatedHeaderHeight
-                    else headerHeight
-                )
+                .height(headerHeight.dp())
                 .background(Color.Gray),
         ) {
             Image(
@@ -349,7 +345,7 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                                 lerp(
                                     start = backButtonSize,
                                     stop = backButtonPadding,
-                                    fraction = headerHeightDelta.coerceIn(0f, 1f),
+                                    fraction = isHeaderInSecondPhase.second.coerceIn(0f, 1f),
                                 )
                                     .toPx()
                                     .toInt()
@@ -358,7 +354,7 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
                                 lerp(
                                     start = backButtonPadding,
                                     stop = backButtonSize - backButtonPadding,
-                                    fraction = headerHeightDelta.coerceIn(0f, 1f),
+                                    fraction = isHeaderInSecondPhase.second.coerceIn(0f, 1f),
                                 )
                                     .toPx()
                                     .toInt()
@@ -434,3 +430,5 @@ fun ProfileScreenWithAnimatedValue(modifier: Modifier = Modifier) {
     }
 
 }
+
+private fun Animatable<Float, AnimationVector1D>.dp(): Dp = value.dp
